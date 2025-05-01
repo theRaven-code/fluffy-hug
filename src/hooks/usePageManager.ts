@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import gsap from "gsap";
 import { AnimationConfig } from "../types";
 
@@ -6,6 +6,7 @@ export const usePageManager = (isMobile: boolean) => {
   const [currentPage, setCurrentPage] = useState(0);
   const animating = useRef(false);
   const prevClientY = useRef(0);
+  const animationTimeline = useRef<gsap.core.Timeline | null>(null);
 
   const mcAnimations: AnimationConfig[] = [
     {
@@ -79,6 +80,15 @@ export const usePageManager = (isMobile: boolean) => {
     },
   ];
 
+  // Cleanup animation timeline on unmount
+  useEffect(() => {
+    return () => {
+      if (animationTimeline.current) {
+        animationTimeline.current.kill();
+      }
+    };
+  }, []);
+
   const pageChange = (opt = 1) => {
     if (animating.current) return;
 
@@ -88,41 +98,67 @@ export const usePageManager = (isMobile: boolean) => {
     setCurrentPage(nextPage);
     animating.current = true;
 
+    // Kill existing timeline if any
+    if (animationTimeline.current) {
+      animationTimeline.current.kill();
+    }
+
+    // Create new timeline
+    animationTimeline.current = gsap.timeline({
+      onComplete: () => {
+        animating.current = false;
+      },
+    });
+
     try {
-      gsap.to(".human", {
-        ...humanAnimations[nextPage],
-        duration: 0.6,
-        stagger: 0.01,
-        ease: "power1.inOut",
-      });
+      // Optimize animation duration for mobile
+      const duration = isMobile ? 0.4 : 0.6;
+      const stagger = isMobile ? 0.02 : 0.01;
 
-      gsap.to(".jp-text", {
-        ...jpTextAnimations[nextPage],
-        duration: 0.4,
-        ease: "power1.inOut",
-      });
-
-      gsap.to(".logo", {
-        ...logoAnimations[nextPage],
-        duration: 0.4,
-        ease: "power1.inOut",
-      });
-
-      gsap.to(".huge-logo", {
-        ...hugeLogoAnimations[nextPage],
-        duration: 0.4,
-        delay: nextPage === 1 ? 0.4 : 0,
-        ease: "power1.inOut",
-      });
-
-      gsap.to(".mc", {
-        ...mcAnimations[nextPage],
-        duration: 0.6,
-        ease: "power1.inOut",
-        onComplete: () => {
-          animating.current = false;
-        },
-      });
+      animationTimeline.current
+        .to(".human", {
+          ...humanAnimations[nextPage],
+          duration,
+          stagger,
+          ease: "power1.inOut",
+        })
+        .to(
+          ".jp-text",
+          {
+            ...jpTextAnimations[nextPage],
+            duration: 0.4,
+            ease: "power1.inOut",
+          },
+          "<"
+        )
+        .to(
+          ".logo",
+          {
+            ...logoAnimations[nextPage],
+            duration: 0.4,
+            ease: "power1.inOut",
+          },
+          "<"
+        )
+        .to(
+          ".huge-logo",
+          {
+            ...hugeLogoAnimations[nextPage],
+            duration: 0.4,
+            delay: nextPage === 1 ? 0.4 : 0,
+            ease: "power1.inOut",
+          },
+          "<"
+        )
+        .to(
+          ".mc",
+          {
+            ...mcAnimations[nextPage],
+            duration,
+            ease: "power1.inOut",
+          },
+          "<"
+        );
     } catch (error) {
       console.error("Animation error:", error);
       animating.current = false;
@@ -133,6 +169,7 @@ export const usePageManager = (isMobile: boolean) => {
     e.preventDefault();
     if (animating.current) return;
 
+    // Add debounce for wheel events
     if (e.deltaY > 0) {
       pageChange(1);
     } else {
@@ -152,10 +189,17 @@ export const usePageManager = (isMobile: boolean) => {
 
     if (animating.current) return;
 
-    if (touch.clientY < prevClientY.current) {
-      pageChange(1);
-    } else {
-      pageChange(-1);
+    // Add threshold for touch events
+    const threshold = 50;
+    const deltaY = touch.clientY - prevClientY.current;
+
+    if (Math.abs(deltaY) > threshold) {
+      if (deltaY < 0) {
+        pageChange(1);
+      } else {
+        pageChange(-1);
+      }
+      prevClientY.current = touch.clientY;
     }
   };
 

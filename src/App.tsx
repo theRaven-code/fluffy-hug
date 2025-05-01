@@ -12,11 +12,43 @@ import { usePageManager } from "./hooks/usePageManager";
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
   const bgRef = useRef<HTMLDivElement>(null);
   const bgImageRef = useRef<HTMLImageElement>(null);
 
   const { currentPage, handleWheel, handleTouchStart, handleTouchMove } =
     usePageManager(isMobile);
+
+  // Preload critical images
+  useEffect(() => {
+    const preloadImages = async () => {
+      const criticalImages = [
+        "/images/bg-2.png",
+        "/images/bg-3.png",
+        "/images/logo.webp",
+        "/images/loading.webp",
+      ];
+
+      try {
+        await Promise.all(
+          criticalImages.map((src) => {
+            return new Promise((resolve, reject) => {
+              const img = new Image();
+              img.src = src;
+              img.onload = resolve;
+              img.onerror = reject;
+            });
+          })
+        );
+        setImagesLoaded(true);
+      } catch (error) {
+        console.error("Error preloading images:", error);
+        setImagesLoaded(true); // Continue even if preloading fails
+      }
+    };
+
+    preloadImages();
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -29,11 +61,13 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    if (imagesLoaded) {
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [imagesLoaded]);
 
   useEffect(() => {
     if (!isLoading && bgRef.current) {
@@ -68,13 +102,20 @@ const App: React.FC = () => {
       onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
+      role="application"
+      aria-label="Interactive animal showcase"
     >
       {currentPage === 1 && (
-        <div className="absolute w-full h-full">
+        <div
+          className="absolute w-full h-full"
+          role="region"
+          aria-label="First scene"
+        >
           <img
             src="/images/bg-2.png"
-            alt="Background"
+            alt="Background scene with floating elements"
             className="w-full h-full object-cover"
+            loading="eager"
           />
           <div className="absolute w-full h-full pointer-events-none overflow-hidden">
             {[...Array(4)].map((_, i) => (
@@ -92,12 +133,17 @@ const App: React.FC = () => {
       )}
 
       {currentPage === 2 && (
-        <div className="absolute w-full h-full">
+        <div
+          className="absolute w-full h-full"
+          role="region"
+          aria-label="Second scene"
+        >
           <img
             src="/images/bg-2.png"
-            alt="Background"
+            alt="Background scene with floating elements"
             className="w-full h-full object-cover"
             ref={bgImageRef}
+            loading="eager"
           />
           {[...Array(4)].map((_, i) => (
             <Planet
@@ -113,16 +159,21 @@ const App: React.FC = () => {
       )}
 
       {currentPage === 3 && (
-        <div className="absolute w-full h-full">
+        <div
+          className="absolute w-full h-full"
+          role="region"
+          aria-label="Third scene"
+        >
           <img
             src="/images/bg-3.png"
-            alt="Background"
+            alt="Background scene with floating elements"
             className="w-full h-full object-cover"
+            loading="eager"
           />
         </div>
       )}
 
-      <div>
+      <div role="banner">
         <Logo
           className="absolute opacity-0 -translate-y-1/2 top-[40vh] left-1/2 -translate-x-1/2 w-[84vw]"
           isHuge
@@ -135,6 +186,8 @@ const App: React.FC = () => {
           "min-w-full min-h-full aspect-[1.5/1]",
           "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         )}
+        role="region"
+        aria-label="Character showcase"
       >
         {images.map((image, idx) =>
           idx === 13 ? (
@@ -143,13 +196,16 @@ const App: React.FC = () => {
               className={clsx(
                 "mc absolute top-0 w-[45%] left-1/2 translate-y-[13vh] -translate-x-1/2"
               )}
+              role="img"
+              aria-label="Main character"
             >
               <img
                 src={image.src}
-                alt=""
+                alt="Main character"
                 className={`w-full h-auto ${
                   idx % 2 === 0 ? "animate-jump" : "animate-jump-alt"
                 }`}
+                loading="lazy"
               />
             </div>
           ) : (
@@ -160,6 +216,8 @@ const App: React.FC = () => {
                 top: image.pos.top + "%",
                 left: image.pos.left + "%",
               }}
+              role="img"
+              aria-label={`Character ${idx + 1}`}
             >
               <div
                 className={clsx(
@@ -168,10 +226,11 @@ const App: React.FC = () => {
               >
                 <img
                   src={image.src}
-                  alt=""
+                  alt={`Character ${idx + 1}`}
                   className={`w-full h-auto ${
                     idx % 2 === 0 ? "animate-jump" : "animate-jump-alt"
                   }`}
+                  loading="lazy"
                 />
               </div>
             </div>
