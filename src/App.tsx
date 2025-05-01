@@ -1,35 +1,192 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { clsx } from "clsx";
+import Loading from "./components/Loading";
+import Planet from "./components/Planet";
+import JapaneseText from "./components/JapaneseText";
+import SocialLinks from "./components/SocialLinks";
+import Logo from "./components/Logo";
+import { images } from "./constants";
+import { usePageManager } from "./hooks/usePageManager";
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const bgRef = useRef<HTMLDivElement>(null);
+  const bgImageRef = useRef<HTMLImageElement>(null);
+
+  const { currentPage, handleWheel, handleTouchStart, handleTouchMove } =
+    usePageManager(isMobile);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && bgRef.current) {
+      gsap.fromTo(
+        bgRef.current,
+        { opacity: 0, scale: 0.95 },
+        { opacity: 1, scale: 1, duration: 1.2, ease: "power2.out" }
+      );
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (currentPage === 2 && bgImageRef.current) {
+      gsap.to(bgImageRef.current, {
+        scale: 1.1,
+        duration: 5,
+        yoyo: true,
+        repeat: 1,
+        ease: "sine.inOut",
+        zIndex: -10,
+      });
+    }
+  }, [currentPage]);
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div
+      className="w-full h-screen relative bg-[#fcf6ec] overflow-hidden"
+      onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+    >
+      {currentPage === 1 && (
+        <div className="absolute w-full h-full">
+          <img
+            src="/images/bg-2.png"
+            alt="Background"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute w-full h-full pointer-events-none overflow-hidden">
+            {[...Array(4)].map((_, i) => (
+              <Planet
+                key={i}
+                src={`/images/planet-${i + 1}.webp`}
+                startLeft={20 + i * 20}
+                duration={20 + i}
+                delay={i * 2}
+                size={100 + i * 20}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-export default App
+      {currentPage === 2 && (
+        <div className="absolute w-full h-full">
+          <img
+            src="/images/bg-2.png"
+            alt="Background"
+            className="w-full h-full object-cover"
+            ref={bgImageRef}
+          />
+          {[...Array(4)].map((_, i) => (
+            <Planet
+              key={i}
+              src={`/images/planet-${i + 1}.webp`}
+              startLeft={20 + i * 20}
+              duration={20 + i * 3}
+              delay={i * 2}
+              size={100 + i * 20}
+            />
+          ))}
+        </div>
+      )}
+
+      {currentPage === 3 && (
+        <div className="absolute w-full h-full">
+          <img
+            src="/images/bg-3.png"
+            alt="Background"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      <div>
+        <Logo
+          className="absolute opacity-0 -translate-y-1/2 top-[40vh] left-1/2 -translate-x-1/2 w-[84vw]"
+          isHuge
+        />
+      </div>
+
+      <div
+        className={clsx(
+          "absolute",
+          "min-w-full min-h-full aspect-[1.5/1]",
+          "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        )}
+      >
+        {images.map((image, idx) =>
+          idx === 13 ? (
+            <div
+              key={idx}
+              className={clsx(
+                "mc absolute top-0 w-[45%] left-1/2 translate-y-[13vh] -translate-x-1/2"
+              )}
+            >
+              <img
+                src={image.src}
+                alt=""
+                className={`w-full h-auto ${
+                  idx % 2 === 0 ? "animate-jump" : "animate-jump-alt"
+                }`}
+              />
+            </div>
+          ) : (
+            <div
+              key={idx}
+              className={clsx("absolute top-0 w-[45%] human")}
+              style={{
+                top: image.pos.top + "%",
+                left: image.pos.left + "%",
+              }}
+            >
+              <div
+                className={clsx(
+                  "absolute w-full -translate-x-1/2 -translate-y-1/2"
+                )}
+              >
+                <img
+                  src={image.src}
+                  alt=""
+                  className={`w-full h-auto ${
+                    idx % 2 === 0 ? "animate-jump" : "animate-jump-alt"
+                  }`}
+                />
+              </div>
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="w-full h-full absolute left-0 right-0">
+        <Logo className="absolute left-8 top-8 lg:top-10 lg:left-10 w-[40vw] lg:w-[30vw] max-w-[380px]" />
+        <SocialLinks />
+      </div>
+
+      <JapaneseText />
+    </div>
+  );
+};
+
+export default App;

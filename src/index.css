@@ -1,1 +1,31 @@
 @import "tailwindcss";
+@keyframes moveUpInfinite {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+.animate-moveUpInfinite {
+  animation: moveUpInfinite 5s linear infinite;
+}
+
+@keyframes jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-30px);
+  }
+}
+
+.animate-jump {
+  animation: jump 1.5s ease-in-out infinite;
+}
+
+.animate-jump-alt {
+  animation: jump 1.5s ease-in-out infinite;
+  animation-delay: 0.75s;
+}
